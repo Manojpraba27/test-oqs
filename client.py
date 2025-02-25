@@ -9,38 +9,30 @@ PORT = 12345
 def derive_key(shared_secret):
     return hashlib.sha256(shared_secret).digest()
 
-# Start server
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-    server.bind((HOST, PORT))
-    server.listen()
-    print(f"Server listening on {HOST}:{PORT}")
+# Connect to the server
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+    client.connect((HOST, PORT))
 
-    conn, addr = server.accept()
-    with conn:
-        print(f"Connected by {addr}")
+    # Receive the public key from the server
+    public_key = client.recv(1024)
 
-        # Kyber key pair generation
-        with oqs.KeyEncapsulation("Kyber1024") as kem:
-            public_key = kem.generate_keypair()
-            secret_key = kem.export_secret_key()
+    # Generate a Kyber shared secret
+    with oqs.KeyEncapsulation("Kyber1024") as kem:
+        ciphertext, shared_secret = kem.encap_secret(public_key)
+        symmetric_key = derive_key(shared_secret)
 
-            # Send the public key to the client
-            conn.sendall(public_key)
+        # Send ciphertext (encrypted shared secret)
+        client.sendall(ciphertext)
 
-            # Receive encrypted data (ciphertext + encrypted message)
-            ciphertext = conn.recv(1024)
-            encrypted_message = conn.recv(1024)
+        # Get user input and encrypt the message
+        message = input("Enter message: ").encode()
+        encrypted_message = bytes([b ^ symmetric_key[i % len(symmetric_key)] for i, b in enumerate(message)])
 
-            # Decrypt the shared secret
-            shared_secret = kem.decap_secret(ciphertext)
-            symmetric_key = derive_key(shared_secret)
+        # Send encrypted message
+        client.sendall(encrypted_message)
 
-            # Decrypt the message using XOR
-            decrypted_message = bytes([b ^ symmetric_key[i % len(symmetric_key)] for i, b in enumerate(encrypted_message)])
+        # Receive and decrypt the server's response
+        encrypted_response = client.recv(1024)
+        decrypted_response = bytes([b ^ symmetric_key[i % len(symmetric_key)] for i, b in enumerate(encrypted_response)])
 
-            print(f"Client says: {decrypted_message.decode()}")
-
-            # Respond to the client
-            response = "Message received!".encode()
-            encrypted_response = bytes([b ^ symmetric_key[i % len(symmetric_key)] for i, b in enumerate(response)])
-            conn.sendall(encrypted_response)
+        print(f"Server response: {decrypted_response.decode()}")
