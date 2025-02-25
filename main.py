@@ -1,17 +1,17 @@
-import pyoqs
+import oqs
 
-# Example: Using Kyber512 (a post-quantum encryption algorithm)
-# 1. Generate key pair
-public_key, private_key = pyoqs.kyber512.keypair()
+# Generate key pair
+with oqs.KeyEncapsulation("Kyber1024") as kem:
+    public_key = kem.generate_keypair()
+    secret_key = kem.export_secret_key()
 
-# 2. Encryption
-plaintext = b"Hello, post-quantum cryptography!"
-ciphertext = pyoqs.kyber512.encrypt(public_key, plaintext)
+    # Encrypt (Encapsulate)
+    ciphertext, shared_secret_enc = kem.encap_secret(public_key)
+    print(f"Ciphertext: {ciphertext.hex()}")
+    print(f"Shared Secret (Encapsulated): {shared_secret_enc.hex()}")
 
-# 3. Decryption
-decrypted_message = pyoqs.kyber512.decrypt(private_key, ciphertext)
-
-# Output the results
-print(f"Original Message: {plaintext.decode()}")
-print(f"Encrypted Message (ciphertext): {ciphertext}")
-print(f"Decrypted Message: {decrypted_message.decode()}")
+# Decrypt (Decapsulate)
+with oqs.KeyEncapsulation("Kyber1024") as kem_dec:
+    kem_dec.import_secret_key(secret_key)
+    shared_secret_dec = kem_dec.decap_secret(ciphertext)
+    print(f"Shared Secret (Decapsulated): {shared_secr
