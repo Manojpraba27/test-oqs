@@ -14,4 +14,10 @@ with oqs.KeyEncapsulation("Kyber1024") as kem:
 with oqs.KeyEncapsulation("Kyber1024") as kem_dec:
     kem_dec.import_secret_key(secret_key)
     shared_secret_dec = kem_dec.decap_secret(ciphertext)
-    print(f"Shared Secret (Decapsulated): {shared_secr
+    print(f"Shared Secret (Decapsulated): {shared_secret_dec.hex()}")
+
+# Check if the shared secrets match
+if shared_secret_enc == shared_secret_dec:
+    print("Encryption and decryption successful!")
+else:
+    print("Mismatch in shared secrets!")
